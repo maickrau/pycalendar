@@ -3,6 +3,8 @@ import wx.calendar
 
 from BasicViews import TaskViewer
 
+import Globals
+
 class CalendarContainer(wx.Panel):
 	def __init__(self, parent, dayChangeCallback):
 		super(CalendarContainer, self).__init__(parent)
@@ -19,12 +21,13 @@ class CalendarView(wx.SplitterWindow):
 		super(CalendarView, self).__init__(parent)
 		self.model = model
 		self.calendar = CalendarContainer(self, self.selectDayEvent)
-		self.tasks = TaskViewer(self, [], "Tasks on " + self.calendar.getDate(), False, False)
+		self.tasks = TaskViewer(self, [], "Tasks on " + self.calendar.getDate(), False, False, False)
 		self.SplitHorizontally(self.calendar, self.tasks)
 		self.selectDay(self.calendar.getDate())
 
 	def selectDayEvent(self, event):
 		self.selectDay(self.calendar.getDate())
+		Globals.updateViewFunc()
 
 	def selectDay(self, date):
 		if not self.IsSplit():
@@ -34,6 +37,7 @@ class CalendarView(wx.SplitterWindow):
 	def updateModel(self, model):
 		self.model = model
 		self.selectDay(self.calendar.getDate())
+		self.Layout()
 
 
 

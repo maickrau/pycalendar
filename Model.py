@@ -1,5 +1,13 @@
 import pickle
 
+import datetime
+
+def daysSinceToday(ISO):
+	today = datetime.datetime.now().date()
+	otherDate = datetime.datetime.strptime(ISO, '%Y-%m-%d').date()
+	difference = (otherDate-today).days
+	return difference
+
 class CalendarModel(object):
 	def __init__(self):
 		self.tasks = []
@@ -67,3 +75,10 @@ class Task(object):
 		self.name = name
 		self.priority = priority
 
+	def urgency(self):
+		days = daysSinceToday(self.endDate)
+		if (days > 0):
+			result = float(self.priority)/days
+		else:
+			result = float(self.priority)
+		return result

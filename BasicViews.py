@@ -11,40 +11,53 @@ def dateTimeFromISO(ISO):
 	return ret
 
 class TaskViewer(wx.Panel):
-	def __init__(self, parent, tasks, text, showDates=True, showPriority=True):
+	def __init__(self, parent, tasks, text, showDates=True, showPriority=True, showUrgency=False, sorter=lambda task: -task.priority):
 		super(TaskViewer, self).__init__(parent)
+		self.sorter = sorter
 		self.box = wx.BoxSizer(orient=wx.VERTICAL)
 		self.infoText = wx.StaticText(self, label=text)
 		self.showDates = showDates
 		self.showPriority = showPriority
+		self.showUrgency = showUrgency
 		self.box.Add(self.infoText)
 		self.updateTasks(tasks)
 		self.SetSizerAndFit(self.box)
 
-	def update(self, tasks, text):
+	def update(self, tasks, text=None):
 		self.infoText.Hide()
-		self.unmake()
+		self.unmake(self.tasks)
 		self.box.Clear()
-		self.infoText.SetLabel(text)
+		self.box = wx.BoxSizer(orient=wx.VERTICAL)
+		if text is not None:
+			self.infoText.SetLabel(text)
 		self.box.Add(self.infoText)
 		self.updateTasks(tasks)
 		self.infoText.Show()
 		self.SetSizerAndFit(self.box)
+		self.Layout()
+#		self.Fit()
 
 	def updateTasks(self, tasks):
 		self.tasks = []
-		for e in sorted(tasks, key=lambda task: -task.priority):
-			newThing = TaskField(e, self, self.showDates, self.showPriority)
+		for e in sorted(tasks, key=self.sorter):
+			newThing = TaskField(e, self, self.showDates, self.showPriority, self.showUrgency)
 			self.tasks.append(newThing)
 			self.box.Add(newThing)
 
-	def unmake(self):
+	def unmake(self, keep):
 		for f in self.tasks:
 			f.unmake()
 
 class TaskField(wx.GridSizer):
-	def __init__(self, thing, parent, showDates=True, showPriority=True):
-		super(TaskField, self).__init__(1, 4, 5, 5)
+	def __init__(self, thing, parent, showDates=True, showPriority=True, showUrgency=True):
+		size = 1
+		if showDates:
+			size += 2
+		if showPriority:
+			size += 1
+		if showUrgency:
+			size += 1
+		super(TaskField, self).__init__(1, size, 5, 5)
 		self.thing = thing
 		self.infoButton = wx.Button(parent, label=self.thing.name)
 		self.Add(self.infoButton)
@@ -57,6 +70,9 @@ class TaskField(wx.GridSizer):
 		if showPriority:
 			self.priority = wx.StaticText(parent, label=str(self.thing.priority))
 			self.Add(self.priority)
+		if showUrgency:
+			self.urgency = wx.StaticText(parent, label="%2f" % self.thing.urgency())
+			self.Add(self.urgency)
 	def giveDetails(self, event):
 		details = TaskDetails(self.thing)
 		details.Show()
@@ -68,6 +84,8 @@ class TaskField(wx.GridSizer):
 			self.endDate.Destroy()
 		if hasattr(self, 'priority'):
 			self.priority.Destroy()
+		if hasattr(self, 'urgency'):
+			self.urgency.Destroy()
 
 class TaskDetails(wx.Frame):
 	def __init__(self, thing):
