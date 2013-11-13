@@ -76,16 +76,16 @@ class MainFrame(wx.Frame):
 		BasicViews.TaskDetails(self.model.add(today(), today(), "", 0)).Show()
 		self.updateView()
 
+	def doToFile(self, function):
+		filedialog = wx.FileDialog(self)
+		if filedialog.ShowModal() == wx.ID_OK:
+			function(os.path.join(filedialog.GetDirectory(), filedialog.GetFilename()))
+		filedialog.Destroy()
+
 	def saveEvent(self, event):
-		filedialog = wx.FileDialog(self)
-		if filedialog.ShowModal() == wx.ID_OK:
-			self.saveToFile(os.path.join(filedialog.GetDirectory(), filedialog.GetFilename()))
-		filedialog.Destroy()
+		self.doToFile(self.saveToFile)
 	def loadEvent(self, event):
-		filedialog = wx.FileDialog(self)
-		if filedialog.ShowModal() == wx.ID_OK:
-			self.loadFromFile(os.path.join(filedialog.GetDirectory(), filedialog.GetFilename()))
-		filedialog.Destroy()
+		self.doToFile(self.loadFromFile)
 	def saveToFile(self, fileName):
 		print "save", fileName
 		self.model.save(fileName)
