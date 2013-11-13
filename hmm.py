@@ -6,7 +6,7 @@ import sys
 
 import datetime
 
-from Model import CalendarModel
+import Model
 from CalendarView import CalendarView
 from AllTasksList import AllTasksList
 import BasicViews
@@ -14,18 +14,24 @@ import BasicViews
 import Globals
 
 def today():
-	times = datetime.datetime.now()
-	return str(times.year)+"-"+str(times.month)+"-"+str(times.day)
+	return datetime.date.today().isoformat()
 
 class MainFrame(wx.Frame):
 	def __init__(self, parent, title):
 		super(MainFrame, self).__init__(parent, title=title)
 
-		self.model = CalendarModel()
+		self.model = Model.CalendarModel()
+
+		Globals.updateViewFunc = self.updateView
+
 		Globals.updateTaskFunc = self.updateTask
 		Globals.removeTaskFunc = self.removeTask
 		Globals.addTaskFunc = self.addTask
-		Globals.updateViewFunc = self.updateView
+
+		Globals.updateRepeatFunc = self.updateRepeat
+		Globals.removeRepeatFunc = self.removeRepeat
+		Globals.addRepeatFunc = self.addRepeat
+
 		self.makeMenu()
 		self.makeView()
 		self.updateView()
@@ -48,15 +54,15 @@ class MainFrame(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.loadEvent, load)
 		self.Bind(wx.EVT_MENU, self.closeEvent, exit)
 		menubar.Append(menu, "&File")
+
+		repeatMenu = wx.Menu()
+		newRepeat = repeatMenu.Append(-1, text="&New repeat task", help="New repeat task")
+		showRepeat = repeatMenu.Append(-1, text="&Show repeat tasks", help="Show repeat tasks")
+		self.Bind(wx.EVT_MENU, self.addRepeatEvent, newRepeat)
+		self.Bind(wx.EVT_MENU, self.showRepeatEvent, showRepeat)
+		menubar.Append(repeatMenu, "&Repeats")
+
 		self.SetMenuBar(menubar)
-
-	def removeTask(self, task):
-		self.model.removeTask(task)
-		self.updateView()
-
-	def updateTask(self, task, name, startDate, endDate, priority, description):
-		self.model.updateTask(task, name, startDate, endDate, priority, description)
-		self.updateView()
 
 	def makeView(self):
 		self.panel = wx.Panel(self)
@@ -72,8 +78,35 @@ class MainFrame(wx.Frame):
 	def addTaskEvent(self, event):
 		self.addTask()
 
+	def addRepeatEvent(self, event):
+		self.addRepeat()
+
+	def showRepeatEvent(self, event):
+		repeats = BasicViews.RepeatViewer(self, self.model.repeatTaskContainer.repeats, "All repeats")
+		repeats.Show()
+
+	def removeTask(self, task):
+		self.model.removeTask(task)
+		self.updateView()
+
+	def updateTask(self, task, name, startDate, endDate, priority, description):
+		self.model.updateTask(task, name, startDate, endDate, priority, description)
+		self.updateView()
+
 	def addTask(self):
 		BasicViews.TaskDetails(self.model.add(today(), today(), "", 0)).Show()
+		self.updateView()
+
+	def removeRepeat(self, repeat):
+		self.model.removeRepeat(repeat)
+		self.updateView()
+
+	def updateRepeat(self, repeat, name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority, description, taskDescription):
+		self.model.updateRepeat(repeat, name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority, description, taskDescription)
+		self.updateView()
+
+	def addRepeat(self):
+		BasicViews.RepeatDetails(self.model.addRepeat("", today(), Model.weekly, 7, "")).Show()
 		self.updateView()
 
 	def doToFile(self, function):
@@ -91,7 +124,8 @@ class MainFrame(wx.Frame):
 		self.model.save(fileName)
 	def loadFromFile(self, fileName):
 		print "load", fileName
-		self.model = CalendarModel.load(fileName)
+		self.model = Model.CalendarModel.load(fileName)
+		self.model.newDay(today())
 		self.updateView()
 
 	def close(self):

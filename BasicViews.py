@@ -1,6 +1,7 @@
 import wx
 import wx.calendar
 
+import Model
 import Globals
 
 def dateTimeFromISO(ISO):
@@ -9,6 +10,98 @@ def dateTimeFromISO(ISO):
 	ret.Set(int(parts[2]), int(parts[1])-1, int(parts[0]), 0, 0, 0, 0)
 	#day 1..30, month 0..11?? widget :(
 	return ret
+
+class KeyValuesViewer(wx.Panel):
+	def __init__(self, parent, text, keys, keyFunc, detailsFunc, valueFuncs):
+		super(KeyValueViewer, self).__init__(parent)
+		self.box = wx.BoxSizer(orient=wx.VERTICAL)
+		self.infoText = wx.StaticText(self, label=text)
+		self.valueFuncs = valueFuncs
+		self.detailsFunc = detailsFunc
+		self.keyFunc = keyFunc
+		self.box.Add(self.infoText)
+		self.update(keys)
+		self.SetSizerAndFit(self.box)
+	def update(self, keys, text=None):
+		self.infoText.Hide()
+		self.unmake()
+		self.box.Clear()
+		self.box = wx.BoxSizer(orient=wx.VERTICAL)
+		if text is not None:
+			self.infoText.SetLabel(text)
+		self.box.Add(self.infoText)
+		self.update(keys)
+		self.infoText.Show()
+		self.SetSizerAndFit(self.box)
+		self.Layout()
+		self.Fit()
+	def updateKeys(self, keys):
+		self.keys = []
+		for e in keys:
+			newKey = KeyValuesField(self, e, self.keyFunc, self.detailsFunc, self.valuesFuncs)
+			self.repeats.append(newKey)
+			self.box.Add(newKey)
+	def unmake(self):
+		for f in self.repeats:
+			f.unmake()
+
+class KeyValuesField(wx.GridSizer):
+	def __init__(self, parent, key, keyFunc, detailsFunc, valueFuncs):
+		size = len(valueFuncs)+1
+		super(KeyValuesField, self).__init__(1, size, 5, 5)
+		self.keyButton = wx.Button(parent, label=keyFunc(keys))
+		self.detailsFunc = detailsFunc
+		self.key = key
+		self.keyButton.Bind(wx.EVT_BUTTON, self.giveDetails)
+		self.Add(self.keyButton)
+		self.values = []
+		for f in valueFuncs:
+			newField = wx.StaticText(parent, label=f(keys))
+			self.values.append(newField)
+			self.Add(newField)
+	def giveDetails(self, event):
+		self.detailsFunc(self.key)
+	def unmake(self):
+		self.keyButton.Destroy()
+		for i in self.values:
+			i.Destroy()
+		self.values = []
+
+class RepeatViewer(wx.Frame):
+	def __init__(self, parent, repeats, text, showRepeat=True, showNext=True):
+		super(RepeatViewer, self).__init__(parent)
+		self.box = wx.BoxSizer(orient=wx.VERTICAL)
+		self.infoText = wx.StaticText(self, label=text)
+		self.showNext = showNext
+		self.showRepeat = showRepeat
+		self.box.Add(self.infoText)
+		self.updateRepeats(repeats)
+		self.SetSizerAndFit(self.box)
+
+	def update(self, repeats, text=None):
+		self.infoText.Hide()
+		self.unmake(self.repeats)
+		self.box.Clear()
+		self.box = wx.BoxSizer(orient=wx.VERTICAL)
+		if text is not None:
+			self.infoText.SetLabel(text)
+		self.box.Add(self.infoText)
+		self.updateTasks(repeats)
+		self.infoText.Show()
+		self.SetSizerAndFit(self.box)
+		self.Layout()
+		self.Fit()
+
+	def updateRepeats(self, repeats):
+		self.repeats = []
+		for e in repeats:
+			newRepeat = RepeatField(e, self, self.showRepeat, self.showNext)
+			self.repeats.append(newRepeat)
+			self.box.Add(newRepeat)
+
+	def unmake(self, keep):
+		for f in self.repeats:
+			f.unmake()
 
 class TaskViewer(wx.Panel):
 	def __init__(self, parent, tasks, text, showDates=True, showPriority=True, showUrgency=False, sorter=lambda task: -task.priority):
@@ -46,6 +139,34 @@ class TaskViewer(wx.Panel):
 	def unmake(self, keep):
 		for f in self.tasks:
 			f.unmake()
+
+class RepeatField(wx.GridSizer):
+	def __init__(self, repeat, parent, showRepeat=True, showNext=True):
+		size = 1
+		if showRepeat:
+			size += 1
+		if showNext:
+			size += 1
+		super(RepeatField, self).__init__(1, size, 5, 5)
+		self.repeat = repeat
+		self.infoButton = wx.Button(parent, label=self.repeat.name)
+		self.Add(self.infoButton)
+		self.infoButton.Bind(wx.EVT_BUTTON, self.giveDetails)
+		if showRepeat:
+			self.repeatType = wx.StaticText(parent, label=Model.repeatName(self.repeat.repeatCondition))
+			self.Add(self.repeatType)
+		if showNext:
+			self.nextRepeat = wx.StaticText(parent, label=self.repeat.nextRepeat)
+			self.Add(self.nextRepeat)
+	def giveDetails(self, event):
+		details = RepeatDetails(self.repeat)
+		details.Show()
+	def unmake(self):
+		self.infoButton.Destroy()
+		if hasattr(self, 'repeatType'):
+			self.repeatType.Destroy()
+		if hasattr(self, 'nextRepeat'):
+			self.nextRepeat.Destroy()
 
 class TaskField(wx.GridSizer):
 	def __init__(self, thing, parent, showDates=True, showPriority=True, showUrgency=True):
@@ -85,6 +206,66 @@ class TaskField(wx.GridSizer):
 			self.priority.Destroy()
 		if hasattr(self, 'urgency'):
 			self.urgency.Destroy()
+
+class RepeatDetails(wx.Frame):
+	def __init__(self, repeat):
+		super(RepeatDetails, self).__init__(Globals.mainWindow)
+		panel = wx.Panel(self)
+		self.repeat = repeat
+		self.box = wx.FlexGridSizer(0, 2)
+		self.box.SetFlexibleDirection(wx.VERTICAL)
+		nameLabel = wx.StaticText(panel, label="name")
+		self.nameField = wx.TextCtrl(panel, value=repeat.name)
+		nextRepeatDate = dateTimeFromISO(repeat.nextRepeat)
+		nextRepeatLabel = wx.StaticText(panel, label="next repetition")
+		self.nextRepeatField = wx.calendar.CalendarCtrl(panel, date=nextRepeatDate, style=wx.calendar.CAL_MONDAY_FIRST)
+		repeatLabel = wx.StaticText(panel, label="repeats")
+		self.repeatBox = wx.ComboBox(panel, value=Model.repeatName(repeat.repeatCondition), choices=Model.repeatNames, style=wx.CB_DROPDOWN|wx.CB_READONLY)
+		priorityLabel = wx.StaticText(panel, label="task priority")
+		self.priorityField = wx.TextCtrl(panel, value=str(repeat.taskPriority))
+		descriptionLabel = wx.StaticText(panel, label="description")
+		desc = ""
+		if hasattr(repeat, 'description'):
+			desc = repeat.description
+		self.descriptionField = wx.TextCtrl(panel, value=desc, style=wx.TE_MULTILINE)
+		saveButton = wx.Button(panel, label="save")
+		saveButton.Bind(wx.EVT_BUTTON, self.saveEvent)
+		deleteButton = wx.Button(panel, label="delete")
+		deleteButton.Bind(wx.EVT_BUTTON, self.deleteEvent)
+		self.box.Add(nameLabel)
+		self.box.Add(self.nameField)
+		self.box.Add(nextRepeatLabel)
+		self.box.Add(self.nextRepeatField)
+		self.box.Add(repeatLabel)
+		self.box.Add(self.repeatBox)
+		self.box.Add(priorityLabel)
+		self.box.Add(self.priorityField)
+		self.box.Add(descriptionLabel)
+		self.box.Add(self.descriptionField)
+		self.box.Add(saveButton)
+		self.box.Add(deleteButton)
+		panel.SetSizerAndFit(self.box)
+		self.Fit()
+
+	def deleteEvent(self, event):
+		Globals.removeRepeatFunc(self.repeat)
+		self.Close()
+
+	def saveEvent(self, event):
+		name = self.nameField.GetValue()
+		nextRepeat = self.nextRepeatField.GetDate().FormatISODate()
+		repeat = Model.repeatFunc(self.repeatBox.GetValue())
+		taskPriority = int(self.priorityField.GetValue())
+		description = ""
+		for i in range(0, self.descriptionField.GetNumberOfLines()):
+			if i > 0:
+				description += '\n'
+			description += self.descriptionField.GetLineText(i)
+		taskDescription = ""
+		taskName = ""
+		taskLength = 7
+		Globals.updateRepeatFunc(self.repeat, name, nextRepeat, repeat, taskLength, taskName, taskPriority, description, taskDescription)
+		self.Close()
 
 class TaskDetails(wx.Frame):
 	def __init__(self, thing):

@@ -10,9 +10,9 @@ def daysSinceToday(ISO):
 
 def ISOtodate(ISO):
 	splitted = ISO.split('-')
-	year = splitted[0]
-	month = splitted[1]
-	day = splitted[2]
+	year = int(splitted[0])
+	month = int(splitted[1])
+	day = int(splitted[2])
 	return datetime.date(year, month, day)
 
 def dayPlus(ISO, days):
@@ -21,9 +21,48 @@ def dayPlus(ISO, days):
 def weekly(last):
 	return dayPlus(last, 7)
 
+def repeatName(func):
+	if func is weekly:
+		return "Weekly"
+	return "Unknown repetition type"
+
+def repeatFunc(name):
+	if name == "Weekly":
+		return weekly
+	return lambda iso: dayPlus(iso, 1)
+
+repeatNames = ["Weekly"]
+
 class CalendarModel(object):
 	def __init__(self):
 		self.taskContainer = TaskContainer()
+		self.repeatTaskContainer = RepeatTaskContainer()
+		self.lastDayDone = datetime.date.today().isoformat()
+
+	def addRepeat(self, name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority=1):
+		return self.repeatTaskContainer.add(name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority)
+
+	def updateRepeat(self, repeat, name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority, description, taskDescription):
+		self.repeatTaskContainer.updateRepeat(repeat, name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority, description, taskDescription)
+
+	def removeRepeat(self, repeat):
+		self.repeatTaskContainer.removeRepeat(repeat)
+
+	def newDay(self, date):
+		if ISOtodate(self.lastDayDone) >= ISOtodate(date):
+			return
+		start = ISOtodate(self.lastDayDone)
+		end = ISOtodate(date)
+		days = (end-start).days+1
+		#lastDayDone aka start has already been done
+		for n in range(1, days):
+			day = start+datetime.timedelta(n)
+			self.doDay(day.isoformat())
+		self.lastDayDone = date
+
+	def doDay(self, day):
+		newTasks = self.repeatTaskContainer.getNewTasks(day)
+		self.taskContainer.addBatch(newTasks)
 
 	def add(self, startDate, endDate, name, priority=1):
 		return self.taskContainer.add(startDate, endDate, name, priority)
@@ -59,11 +98,49 @@ class CalendarModel(object):
 			found = pickle.load(f)
 		if not hasattr(found, 'taskContainer'):
 			found.taskContainer = TaskContainer()
+		if not hasattr(found, 'repeatTaskContainer'):
+			found.repeatTaskContainer = RepeatTaskContainer()
+		if not hasattr(found, 'lastDayDone'):
+			found.lastDayDone = "2013-11-11" #OOPS! this will cause bugs in the future
 		return found
+
+class RepeatTaskContainer(object):
+	def __init__(self):
+		self.repeats = []
+
+	def add(self, name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority=1):
+		newRepeat = RepeatTask(name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority)
+		self.repeats.append(newRepeat)
+		return newRepeat
+
+	def updateRepeat(self, repeat, name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority, description, taskDescription):
+		repeat.name = name
+		repeat.firstRepeat = firstRepeat
+		repeat.repeatCondition = repeatCondition
+		repeat.taskLength = taskLength
+		repeat.taskName = taskName
+		repeat.taskPriority = taskPriority
+		repeat.description = description
+		repeat.taskDescription = taskDescription
+
+	def removeRepeat(self, repeat):
+		del self.repeats[self.repeats.index(repeat)]
+
+	def getNewTasks(self, date):
+		newTasks = []
+		for r in self.repeats:
+			newTask = r.genTask()
+			if newTask is not None:
+				newTasks.append(newTask)
+		return newTasks
 
 class TaskContainer(object):
 	def __init__(self):
 		self.tasks = []
+
+	def addBatch(self, tasks):
+		self.tasks += tasks
+
 	def add(self, startDate, endDate, name, priority):
 		newTask = Task(startDate, endDate, name, priority)
 		self.tasks.append(newTask)
@@ -75,6 +152,9 @@ class TaskContainer(object):
 		task.endDate = endDate
 		task.priority = priority
 		task.description = description
+
+	def removeTask(self, task):
+		del self.tasks[self.tasks.index(task)]
 
 	def getAllTasks(self):
 		return self.tasks
@@ -114,8 +194,10 @@ class RepeatTask(object):
 		self.taskLength = taskLength
 		self.taskPriority = taskPriority
 		self.taskName = taskName
-		self.taskIteration = 0
 		self.nextRepeat = firstRepeat
+		self.description = ""
+		self.taskDescription = ""
+		self.taskIteration = 0
 	def calcNextGen(self):
 		self.nextRepeat = self.repeatCondition(self.nextRepeat)
 	def genTask(self, currentDate):
