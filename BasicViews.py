@@ -12,15 +12,16 @@ def dateTimeFromISO(ISO):
 	return ret
 
 class KeyValuesViewer(wx.Panel):
-	def __init__(self, parent, text, keys, keyFunc, detailsFunc, valueFuncs):
-		super(KeyValueViewer, self).__init__(parent)
+	def __init__(self, parent, text, keys, keyNameFunc, detailsFunc, valueFuncs, sorter=lambda key: 0):
+		super(KeyValuesViewer, self).__init__(parent)
 		self.box = wx.BoxSizer(orient=wx.VERTICAL)
 		self.infoText = wx.StaticText(self, label=text)
 		self.valueFuncs = valueFuncs
 		self.detailsFunc = detailsFunc
-		self.keyFunc = keyFunc
+		self.keyNameFunc = keyNameFunc
+		self.sorter = sorter
 		self.box.Add(self.infoText)
-		self.update(keys)
+		self.updateKeys(keys)
 		self.SetSizerAndFit(self.box)
 	def update(self, keys, text=None):
 		self.infoText.Hide()
@@ -30,33 +31,32 @@ class KeyValuesViewer(wx.Panel):
 		if text is not None:
 			self.infoText.SetLabel(text)
 		self.box.Add(self.infoText)
-		self.update(keys)
+		self.updateKeys(keys)
 		self.infoText.Show()
 		self.SetSizerAndFit(self.box)
 		self.Layout()
-		self.Fit()
 	def updateKeys(self, keys):
 		self.keys = []
-		for e in keys:
-			newKey = KeyValuesField(self, e, self.keyFunc, self.detailsFunc, self.valuesFuncs)
-			self.repeats.append(newKey)
+		for e in sorted(keys, key=self.sorter):
+			newKey = KeyValuesField(self, e, self.keyNameFunc, self.detailsFunc, self.valueFuncs)
+			self.keys.append(newKey)
 			self.box.Add(newKey)
 	def unmake(self):
-		for f in self.repeats:
+		for f in self.keys:
 			f.unmake()
 
 class KeyValuesField(wx.GridSizer):
-	def __init__(self, parent, key, keyFunc, detailsFunc, valueFuncs):
+	def __init__(self, parent, key, keyNameFunc, detailsFunc, valueFuncs):
 		size = len(valueFuncs)+1
 		super(KeyValuesField, self).__init__(1, size, 5, 5)
-		self.keyButton = wx.Button(parent, label=keyFunc(keys))
+		self.keyButton = wx.Button(parent, label=keyNameFunc(key))
 		self.detailsFunc = detailsFunc
 		self.key = key
 		self.keyButton.Bind(wx.EVT_BUTTON, self.giveDetails)
 		self.Add(self.keyButton)
 		self.values = []
 		for f in valueFuncs:
-			newField = wx.StaticText(parent, label=f(keys))
+			newField = wx.StaticText(parent, label=f(key))
 			self.values.append(newField)
 			self.Add(newField)
 	def giveDetails(self, event):
@@ -106,39 +106,24 @@ class RepeatViewer(wx.Frame):
 class TaskViewer(wx.Panel):
 	def __init__(self, parent, tasks, text, showDates=True, showPriority=True, showUrgency=False, sorter=lambda task: -task.priority):
 		super(TaskViewer, self).__init__(parent)
-		self.sorter = sorter
-		self.box = wx.BoxSizer(orient=wx.VERTICAL)
-		self.infoText = wx.StaticText(self, label=text)
-		self.showDates = showDates
-		self.showPriority = showPriority
-		self.showUrgency = showUrgency
-		self.box.Add(self.infoText)
-		self.updateTasks(tasks)
-		self.SetSizerAndFit(self.box)
+		keyNameFunc = lambda task: task.name
+		valueFuncs = []
+		if showDates:
+			valueFuncs.append(lambda task: task.startDate)
+			valueFuncs.append(lambda task: task.endDate)
+		if showPriority:
+			valueFuncs.append(lambda task: str(task.priority))
+		if showUrgency:
+			valueFuncs.append(lambda task: "%2f" % task.urgency())
+
+		self.keyValues = KeyValuesViewer(self, text, tasks, keyNameFunc, self.showTask, valueFuncs, sorter)
+
+	def showTask(self, task):
+		TaskDetails(task).Show()
 
 	def update(self, tasks, text=None):
-		self.infoText.Hide()
-		self.unmake(self.tasks)
-		self.box.Clear()
-		self.box = wx.BoxSizer(orient=wx.VERTICAL)
-		if text is not None:
-			self.infoText.SetLabel(text)
-		self.box.Add(self.infoText)
-		self.updateTasks(tasks)
-		self.infoText.Show()
-		self.SetSizerAndFit(self.box)
+		self.keyValues.update(tasks, text)
 		self.Layout()
-
-	def updateTasks(self, tasks):
-		self.tasks = []
-		for e in sorted(tasks, key=self.sorter):
-			newThing = TaskField(e, self, self.showDates, self.showPriority, self.showUrgency)
-			self.tasks.append(newThing)
-			self.box.Add(newThing)
-
-	def unmake(self, keep):
-		for f in self.tasks:
-			f.unmake()
 
 class RepeatField(wx.GridSizer):
 	def __init__(self, repeat, parent, showRepeat=True, showNext=True):
