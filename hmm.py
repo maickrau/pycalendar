@@ -9,6 +9,7 @@ import datetime
 import Model
 from CalendarView import CalendarView
 from AllTasksList import AllTasksList
+from AllRepeatsList import AllRepeatsList
 import BasicViews
 
 import Globals
@@ -45,22 +46,13 @@ class MainFrame(wx.Frame):
 	def makeMenu(self):
 		menubar = wx.MenuBar()
 		menu = wx.Menu()
-		newtask = menu.Append(-1, text="&New task", help="New task")
 		save = menu.Append(-1, text="&Save", help="Save to file")
 		load = menu.Append(-1, text="&Load", help="Load from file")
 		exit = menu.Append(wx.ID_EXIT, text="E&xit", help="Exit program")
-		self.Bind(wx.EVT_MENU, self.addTaskEvent, newtask)
 		self.Bind(wx.EVT_MENU, self.saveEvent, save)
 		self.Bind(wx.EVT_MENU, self.loadEvent, load)
 		self.Bind(wx.EVT_MENU, self.closeEvent, exit)
 		menubar.Append(menu, "&File")
-
-		repeatMenu = wx.Menu()
-		newRepeat = repeatMenu.Append(-1, text="&New repeat task", help="New repeat task")
-		showRepeat = repeatMenu.Append(-1, text="&Show repeat tasks", help="Show repeat tasks")
-		self.Bind(wx.EVT_MENU, self.addRepeatEvent, newRepeat)
-		self.Bind(wx.EVT_MENU, self.showRepeatEvent, showRepeat)
-		menubar.Append(repeatMenu, "&Repeats")
 
 		self.SetMenuBar(menubar)
 
@@ -70,9 +62,11 @@ class MainFrame(wx.Frame):
 		self.calendarView = CalendarView(self.panel, self.model)
 		self.availableTasks = BasicViews.TaskViewer(self.panel, self.model.getAvailableTasks(today()), "Available tasks")
 		self.allTasks = AllTasksList(self.panel, self.model)
+		self.allRepeats = AllRepeatsList(self.panel, self.model)
 		self.box.Add(self.availableTasks)
 		self.box.Add(self.allTasks)
 		self.box.Add(self.calendarView)
+		self.box.Add(self.allRepeats)
 		self.updateView()
 
 	def addTaskEvent(self, event):
@@ -144,9 +138,11 @@ class MainFrame(wx.Frame):
 		self.calendarView.updateModel(self.model)
 		self.availableTasks.update(self.model.getAvailableTasks(today()))
 		self.allTasks.update(self.model)
+		self.allRepeats.update(self.model)
 		self.panel.SetSizerAndFit(self.box)
 		self.panel.Layout()
 		self.panel.Fit()
+		self.panel.Refresh()
 		self.Fit()
 
 

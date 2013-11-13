@@ -70,22 +70,23 @@ class KeyValuesField(wx.GridSizer):
 		self.values = []
 
 class RepeatViewer(wx.Panel):
-	def __init__(self, parent, repeats, text, showRepeat=True, showNext=True):
+	def __init__(self, parent, repeats, text, showRepeat=True, showNext=True, sorter=lambda repeat: repeat.nextRepeat):
 		super(RepeatViewer, self).__init__(parent)
 		keyNameFunc = lambda repeat: repeat.name
+		self.sorter = sorter
 		valueFuncs = []
 		if showRepeat:
 			valueFuncs.append(lambda repeat: Model.repeatName(repeat.repeatCondition))
 		if showNext:
 			valueFuncs.append(lambda repeat: repeat.nextRepeat)
 
-		self.keyValues = KeyValuesViewer(self, text, repeats, keyNameFunc, self.showRepeat, valueFuncs)
+		self.keyValues = KeyValuesViewer(self, text, repeats, keyNameFunc, self.showRepeat, valueFuncs, self.sorter)
 
 	def showRepeat(self, repeat):
 		RepeatDetails(repeat).Show()
 
 	def update(self, repeats, text=None):
-		self.keyValues(update(repeats, text))
+		self.keyValues.update(repeats, text, self.sorter)
 		self.Layout()
 
 class TaskViewer(wx.Panel):
@@ -125,13 +126,18 @@ class RepeatDetails(wx.Frame):
 		self.nextRepeatField = wx.calendar.CalendarCtrl(panel, date=nextRepeatDate, style=wx.calendar.CAL_MONDAY_FIRST)
 		repeatLabel = wx.StaticText(panel, label="repeats")
 		self.repeatBox = wx.ComboBox(panel, value=Model.repeatName(repeat.repeatCondition), choices=Model.repeatNames, style=wx.CB_DROPDOWN|wx.CB_READONLY)
+		taskNameLabel = wx.StaticText(panel, label="task name")
+		self.taskNameField = wx.TextCtrl(panel, value=repeat.taskName)
+		taskLengthLabel = wx.StaticText(panel, label="task length")
+		self.taskLengthField = wx.TextCtrl(panel, value=str(repeat.taskLength))
 		priorityLabel = wx.StaticText(panel, label="task priority")
 		self.priorityField = wx.TextCtrl(panel, value=str(repeat.taskPriority))
-		descriptionLabel = wx.StaticText(panel, label="description")
-		desc = ""
-		if hasattr(repeat, 'description'):
-			desc = repeat.description
+		descriptionLabel = wx.StaticText(panel, label="repeat description")
+		desc = repeat.description
 		self.descriptionField = wx.TextCtrl(panel, value=desc, style=wx.TE_MULTILINE)
+		taskDescriptionLabel = wx.StaticText(panel, label="task description")
+		taskDesc = repeat.taskDescription
+		self.taskDescriptionField = wx.TextCtrl(panel, value=taskDesc, style=wx.TE_MULTILINE)
 		saveButton = wx.Button(panel, label="save")
 		saveButton.Bind(wx.EVT_BUTTON, self.saveEvent)
 		deleteButton = wx.Button(panel, label="delete")
@@ -142,10 +148,16 @@ class RepeatDetails(wx.Frame):
 		self.box.Add(self.nextRepeatField)
 		self.box.Add(repeatLabel)
 		self.box.Add(self.repeatBox)
+		self.box.Add(taskNameLabel)
+		self.box.Add(self.taskNameField)
+		self.box.Add(taskLengthLabel)
+		self.box.Add(self.taskLengthField)
 		self.box.Add(priorityLabel)
 		self.box.Add(self.priorityField)
 		self.box.Add(descriptionLabel)
 		self.box.Add(self.descriptionField)
+		self.box.Add(taskDescriptionLabel)
+		self.box.Add(self.taskDescriptionField)
 		self.box.Add(saveButton)
 		self.box.Add(deleteButton)
 		panel.SetSizerAndFit(self.box)
@@ -166,8 +178,12 @@ class RepeatDetails(wx.Frame):
 				description += '\n'
 			description += self.descriptionField.GetLineText(i)
 		taskDescription = ""
-		taskName = ""
-		taskLength = 7
+		for i in range(0, self.taskDescriptionField.GetNumberOfLines()):
+			if i > 0:
+				taskDescription += '\n'
+			taskDescription += self.taskDescriptionField.GetLineText(i)
+		taskName = self.taskNameField.GetValue()
+		taskLength = int(self.taskLengthField.GetValue())
 		Globals.updateRepeatFunc(self.repeat, name, nextRepeat, repeat, taskLength, taskName, taskPriority, description, taskDescription)
 		self.Close()
 

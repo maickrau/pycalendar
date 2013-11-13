@@ -21,23 +21,40 @@ def dayPlus(ISO, days):
 def weekly(last):
 	return dayPlus(last, 7)
 
+def monthly(last):
+	date = ISOtodate(last)
+	newMonth = date.month+1
+	newYear = date.year
+	if newMonth > 12:
+		newMonth -= 12
+		newYear += 1
+	newDate = date.date(newYear, newMonth, date.day)
+	return newDate.isoformat()
+
 def repeatName(func):
 	if func is weekly:
 		return "Weekly"
+	if func is monthly:
+		return "Monthly"
 	return "Unknown repetition type"
 
 def repeatFunc(name):
 	if name == "Weekly":
 		return weekly
+	if name == "Monthly":
+		return monthly
 	return lambda iso: dayPlus(iso, 1)
 
-repeatNames = ["Weekly"]
+repeatNames = ["Weekly", "Monthly"]
 
 class CalendarModel(object):
 	def __init__(self):
 		self.taskContainer = TaskContainer()
 		self.repeatTaskContainer = RepeatTaskContainer()
 		self.lastDayDone = datetime.date.today().isoformat()
+
+	def getAllRepeats(self):
+		return self.repeatTaskContainer.getAllRepeats()
 
 	def addRepeat(self, name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority=1):
 		return self.repeatTaskContainer.add(name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority)
@@ -61,6 +78,7 @@ class CalendarModel(object):
 		self.lastDayDone = date
 
 	def doDay(self, day):
+		print "doing day", day
 		newTasks = self.repeatTaskContainer.getNewTasks(day)
 		self.taskContainer.addBatch(newTasks)
 
@@ -108,14 +126,17 @@ class RepeatTaskContainer(object):
 	def __init__(self):
 		self.repeats = []
 
-	def add(self, name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority=1):
-		newRepeat = RepeatTask(name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority)
+	def getAllRepeats(self):
+		return self.repeats
+
+	def add(self, name, nextRepeat, repeatCondition, taskLength, taskName, taskPriority=1):
+		newRepeat = RepeatTask(name, nextRepeat, repeatCondition, taskLength, taskName, taskPriority)
 		self.repeats.append(newRepeat)
 		return newRepeat
 
-	def updateRepeat(self, repeat, name, firstRepeat, repeatCondition, taskLength, taskName, taskPriority, description, taskDescription):
+	def updateRepeat(self, repeat, name, nextRepeat, repeatCondition, taskLength, taskName, taskPriority, description, taskDescription):
 		repeat.name = name
-		repeat.firstRepeat = firstRepeat
+		repeat.nextRepeat = nextRepeat
 		repeat.repeatCondition = repeatCondition
 		repeat.taskLength = taskLength
 		repeat.taskName = taskName
@@ -129,7 +150,7 @@ class RepeatTaskContainer(object):
 	def getNewTasks(self, date):
 		newTasks = []
 		for r in self.repeats:
-			newTask = r.genTask()
+			newTask = r.genTask(date)
 			if newTask is not None:
 				newTasks.append(newTask)
 		return newTasks
@@ -201,11 +222,11 @@ class RepeatTask(object):
 	def calcNextGen(self):
 		self.nextRepeat = self.repeatCondition(self.nextRepeat)
 	def genTask(self, currentDate):
-		if currentDate != nextRepeat:
+		if currentDate != self.nextRepeat:
 			return None
 		self.taskIteration += 1
 		startDate = currentDate
-		endDate = dayPlus(currentDate, taskLength)
+		endDate = dayPlus(currentDate, self.taskLength)
 		name = self.taskName+str(self.taskIteration)
 		priority = self.taskPriority
 		self.calcNextGen()
