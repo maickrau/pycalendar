@@ -20,12 +20,12 @@ class CalendarModel(object):
 	def removeTask(self, task):
 		del self.tasks[self.tasks.index(task)]
 
-	def updateTask(self, task, name, startDate, endDate, priority):
-		print "task update model"
+	def updateTask(self, task, name, startDate, endDate, priority, description):
 		task.name = name
 		task.startDate = startDate
 		task.endDate = endDate
 		task.priority = priority
+		task.description = description
 
 	def getAllTasks(self):
 		return self.tasks
@@ -74,6 +74,7 @@ class Task(object):
 		self.endDate = endDate
 		self.name = name
 		self.priority = priority
+		self.description = ""
 
 	def urgency(self):
 		days = daysSinceToday(self.endDate)

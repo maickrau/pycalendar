@@ -35,7 +35,6 @@ class TaskViewer(wx.Panel):
 		self.infoText.Show()
 		self.SetSizerAndFit(self.box)
 		self.Layout()
-#		self.Fit()
 
 	def updateTasks(self, tasks):
 		self.tasks = []
@@ -104,6 +103,11 @@ class TaskDetails(wx.Frame):
 		self.endField = wx.calendar.CalendarCtrl(panel, date=endDate, style=wx.calendar.CAL_MONDAY_FIRST)
 		priorityLabel = wx.StaticText(panel, label="priority")
 		self.priorityField = wx.TextCtrl(panel, value=str(thing.priority))
+		descriptionLabel = wx.StaticText(panel, label="description")
+		desc = ""
+		if hasattr(thing, 'description'):
+			desc = thing.description
+		self.descriptionField = wx.TextCtrl(panel, value=desc, style=wx.TE_MULTILINE)
 		saveButton = wx.Button(panel, label="save")
 		saveButton.Bind(wx.EVT_BUTTON, self.saveEvent)
 		deleteButton = wx.Button(panel, label="delete")
@@ -116,6 +120,8 @@ class TaskDetails(wx.Frame):
 		self.box.Add(self.endField)
 		self.box.Add(priorityLabel)
 		self.box.Add(self.priorityField)
+		self.box.Add(descriptionLabel)
+		self.box.Add(self.descriptionField)
 		self.box.Add(saveButton)
 		self.box.Add(deleteButton)
 		panel.SetSizerAndFit(self.box)
@@ -130,6 +136,11 @@ class TaskDetails(wx.Frame):
 		start = self.startField.GetDate().FormatISODate()
 		end = self.endField.GetDate().FormatISODate()
 		priority = int(self.priorityField.GetValue())
-		Globals.updateTaskFunc(self.thing, name, start, end, priority)
+		description = ""
+		for i in range(0, self.descriptionField.GetNumberOfLines()):
+			if i > 0:
+				description += '\n'
+			description += self.descriptionField.GetLineText(i)
+		Globals.updateTaskFunc(self.thing, name, start, end, priority, description)
 		self.Close()
 

@@ -54,9 +54,8 @@ class MainFrame(wx.Frame):
 		self.model.removeTask(task)
 		self.updateView()
 
-	def updateTask(self, task, name, startDate, endDate, priority):
-		print "task update hmm"
-		self.model.updateTask(task, name, startDate, endDate, priority)
+	def updateTask(self, task, name, startDate, endDate, priority, description):
+		self.model.updateTask(task, name, startDate, endDate, priority, description)
 		self.updateView()
 
 	def makeView(self):
@@ -108,7 +107,6 @@ class MainFrame(wx.Frame):
 		self.updateView()
 
 	def updateView(self):
-		print "update view"
 		self.calendarView.updateModel(self.model)
 		self.availableTasks.update(self.model.getAvailableTasks(today()))
 		self.allTasks.update(self.model)
