@@ -70,38 +70,21 @@ class KeyValuesField(wx.GridSizer):
 class RepeatViewer(wx.Frame):
 	def __init__(self, parent, repeats, text, showRepeat=True, showNext=True):
 		super(RepeatViewer, self).__init__(parent)
-		self.box = wx.BoxSizer(orient=wx.VERTICAL)
-		self.infoText = wx.StaticText(self, label=text)
-		self.showNext = showNext
-		self.showRepeat = showRepeat
-		self.box.Add(self.infoText)
-		self.updateRepeats(repeats)
-		self.SetSizerAndFit(self.box)
+		keyNameFunc = lambda repeat: repeat.name
+		valueFuncs = []
+		if showRepeat:
+			valueFuncs.append(lambda repeat: Model.repeatName(repeat.repeatCondition))
+		if showNext:
+			valueFuncs.append(lambda repeat: repeat.nextRepeat)
+
+		self.keyValues = KeyValuesViewer(self, text, repeats, keyNameFunc, self.showRepeat, valueFuncs)
+
+	def showRepeat(self, repeat):
+		RepeatDetails(repeat).Show()
 
 	def update(self, repeats, text=None):
-		self.infoText.Hide()
-		self.unmake(self.repeats)
-		self.box.Clear()
-		self.box = wx.BoxSizer(orient=wx.VERTICAL)
-		if text is not None:
-			self.infoText.SetLabel(text)
-		self.box.Add(self.infoText)
-		self.updateTasks(repeats)
-		self.infoText.Show()
-		self.SetSizerAndFit(self.box)
+		self.keyValues(update(repeats, text))
 		self.Layout()
-		self.Fit()
-
-	def updateRepeats(self, repeats):
-		self.repeats = []
-		for e in repeats:
-			newRepeat = RepeatField(e, self, self.showRepeat, self.showNext)
-			self.repeats.append(newRepeat)
-			self.box.Add(newRepeat)
-
-	def unmake(self, keep):
-		for f in self.repeats:
-			f.unmake()
 
 class TaskViewer(wx.Panel):
 	def __init__(self, parent, tasks, text, showDates=True, showPriority=True, showUrgency=False, sorter=lambda task: -task.priority):
@@ -124,73 +107,6 @@ class TaskViewer(wx.Panel):
 	def update(self, tasks, text=None):
 		self.keyValues.update(tasks, text)
 		self.Layout()
-
-class RepeatField(wx.GridSizer):
-	def __init__(self, repeat, parent, showRepeat=True, showNext=True):
-		size = 1
-		if showRepeat:
-			size += 1
-		if showNext:
-			size += 1
-		super(RepeatField, self).__init__(1, size, 5, 5)
-		self.repeat = repeat
-		self.infoButton = wx.Button(parent, label=self.repeat.name)
-		self.Add(self.infoButton)
-		self.infoButton.Bind(wx.EVT_BUTTON, self.giveDetails)
-		if showRepeat:
-			self.repeatType = wx.StaticText(parent, label=Model.repeatName(self.repeat.repeatCondition))
-			self.Add(self.repeatType)
-		if showNext:
-			self.nextRepeat = wx.StaticText(parent, label=self.repeat.nextRepeat)
-			self.Add(self.nextRepeat)
-	def giveDetails(self, event):
-		details = RepeatDetails(self.repeat)
-		details.Show()
-	def unmake(self):
-		self.infoButton.Destroy()
-		if hasattr(self, 'repeatType'):
-			self.repeatType.Destroy()
-		if hasattr(self, 'nextRepeat'):
-			self.nextRepeat.Destroy()
-
-class TaskField(wx.GridSizer):
-	def __init__(self, thing, parent, showDates=True, showPriority=True, showUrgency=True):
-		size = 1
-		if showDates:
-			size += 2
-		if showPriority:
-			size += 1
-		if showUrgency:
-			size += 1
-		super(TaskField, self).__init__(1, size, 5, 5)
-		self.thing = thing
-		self.infoButton = wx.Button(parent, label=self.thing.name)
-		self.Add(self.infoButton)
-		self.infoButton.Bind(wx.EVT_BUTTON, self.giveDetails)
-		if showDates:
-			self.startDate = wx.StaticText(parent, label=self.thing.startDate)
-			self.endDate = wx.StaticText(parent, label=self.thing.endDate)
-			self.Add(self.startDate)
-			self.Add(self.endDate)
-		if showPriority:
-			self.priority = wx.StaticText(parent, label=str(self.thing.priority))
-			self.Add(self.priority)
-		if showUrgency:
-			self.urgency = wx.StaticText(parent, label="%2f" % self.thing.urgency())
-			self.Add(self.urgency)
-	def giveDetails(self, event):
-		details = TaskDetails(self.thing)
-		details.Show()
-	def unmake(self):
-		self.infoButton.Destroy()
-		if hasattr(self, 'startDate'):
-			self.startDate.Destroy()
-		if hasattr(self, 'endDate'):
-			self.endDate.Destroy()
-		if hasattr(self, 'priority'):
-			self.priority.Destroy()
-		if hasattr(self, 'urgency'):
-			self.urgency.Destroy()
 
 class RepeatDetails(wx.Frame):
 	def __init__(self, repeat):
