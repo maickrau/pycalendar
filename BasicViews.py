@@ -23,11 +23,13 @@ class KeyValuesViewer(wx.Panel):
 		self.box.Add(self.infoText)
 		self.updateKeys(keys)
 		self.SetSizerAndFit(self.box)
-	def update(self, keys, text=None):
+	def update(self, keys, text=None, sorter=None):
 		self.infoText.Hide()
 		self.unmake()
 		self.box.Clear()
 		self.box = wx.BoxSizer(orient=wx.VERTICAL)
+		if sorter is not None:
+			self.sorter = sorter
 		if text is not None:
 			self.infoText.SetLabel(text)
 		self.box.Add(self.infoText)
@@ -67,7 +69,7 @@ class KeyValuesField(wx.GridSizer):
 			i.Destroy()
 		self.values = []
 
-class RepeatViewer(wx.Frame):
+class RepeatViewer(wx.Panel):
 	def __init__(self, parent, repeats, text, showRepeat=True, showNext=True):
 		super(RepeatViewer, self).__init__(parent)
 		keyNameFunc = lambda repeat: repeat.name
@@ -90,6 +92,7 @@ class TaskViewer(wx.Panel):
 	def __init__(self, parent, tasks, text, showDates=True, showPriority=True, showUrgency=False, sorter=lambda task: -task.priority):
 		super(TaskViewer, self).__init__(parent)
 		keyNameFunc = lambda task: task.name
+		self.sorter = sorter
 		valueFuncs = []
 		if showDates:
 			valueFuncs.append(lambda task: task.startDate)
@@ -99,13 +102,13 @@ class TaskViewer(wx.Panel):
 		if showUrgency:
 			valueFuncs.append(lambda task: "%2f" % task.urgency())
 
-		self.keyValues = KeyValuesViewer(self, text, tasks, keyNameFunc, self.showTask, valueFuncs, sorter)
+		self.keyValues = KeyValuesViewer(self, text, tasks, keyNameFunc, self.showTask, valueFuncs, self.sorter)
 
 	def showTask(self, task):
 		TaskDetails(task).Show()
 
 	def update(self, tasks, text=None):
-		self.keyValues.update(tasks, text)
+		self.keyValues.update(tasks, text, self.sorter)
 		self.Layout()
 
 class RepeatDetails(wx.Frame):
