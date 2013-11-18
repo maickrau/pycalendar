@@ -90,13 +90,14 @@ class RepeatViewer(wx.Panel):
 		self.Layout()
 
 class TaskViewer(wx.Panel):
-	def __init__(self, parent, tasks, text, showDates=True, showPriority=True, showUrgency=False, sorter=lambda task: -task.priority):
+	def __init__(self, parent, tasks, text, showStartDate=True, showEndDate=True, showPriority=False, showUrgency=False, sorter=lambda task: task.endDate):
 		super(TaskViewer, self).__init__(parent)
 		keyNameFunc = lambda task: task.name
 		self.sorter = sorter
 		valueFuncs = []
-		if showDates:
+		if showStartDate:
 			valueFuncs.append(lambda task: task.startDate)
+		if showEndDate:
 			valueFuncs.append(lambda task: task.endDate)
 		if showPriority:
 			valueFuncs.append(lambda task: str(task.priority))

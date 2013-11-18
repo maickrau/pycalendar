@@ -6,7 +6,7 @@ import BasicViews
 class AllTasksList(wx.BoxSizer):
 	def __init__(self, parent, model):
 		super(AllTasksList, self).__init__(orient=wx.VERTICAL)
-		self.taskList = BasicViews.TaskViewer(parent, model.getAllTasks(), "")
+		self.taskList = BasicViews.TaskViewer(parent, model.getAllTasks(), "", True, True, True)
 		text = wx.StaticText(parent, label="All tasks")
 
 		buttons = wx.BoxSizer(orient=wx.HORIZONTAL)

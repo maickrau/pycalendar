@@ -60,7 +60,7 @@ class MainFrame(wx.Frame):
 		self.panel = wx.Panel(self)
 		self.box = wx.BoxSizer(orient=wx.HORIZONTAL)
 		self.calendarView = CalendarView(self.panel, self.model)
-		self.availableTasks = BasicViews.TaskViewer(self.panel, self.model.getAvailableTasks(today()), "Available tasks")
+		self.availableTasks = BasicViews.TaskViewer(self.panel, self.model.getAvailableTasks(today()), "Available tasks", False, True)
 		self.allTasks = AllTasksList(self.panel, self.model)
 		self.allRepeats = AllRepeatsList(self.panel, self.model)
 		self.box.Add(self.availableTasks)
