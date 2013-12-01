@@ -28,7 +28,7 @@ def monthly(last):
 	if newMonth > 12:
 		newMonth -= 12
 		newYear += 1
-	newDate = date.date(newYear, newMonth, date.day)
+	newDate = datetime.date(newYear, newMonth, date.day)
 	return newDate.isoformat()
 
 def repeatName(func):
